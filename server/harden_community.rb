@@ -15,7 +15,7 @@ settings = {
   hide_user_profiles_from_public: true,
   persistent_sessions: true,
   maximum_session_age: 8760,
-  min_password_length: 12,
+  min_password_length: 8,
   min_admin_password_length: 20,
   password_unique_characters: 6,
   approve_post_count: 2,

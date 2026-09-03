@@ -1,3 +1,14 @@
 en:
   site_settings:
     innox_lan_enabled: "Enable simple LAN registration"
+    innox_ai_moderation_enabled: "Enable local AI moderation for forum posts and triggered chat messages"
+    innox_ai_moderation_url: "Internal URL of the local moderation model"
+    innox_ai_moderation_model: "Local moderation model name"
+    innox_ai_moderation_timeout_seconds: "Maximum seconds to wait for one moderation decision"
+    innox_anonymous_category_id: "Category in which anonymous identities may create topics and replies"
+  reviewables:
+    reasons:
+      innox_anonymous_review: "Anonymous content must be approved by a moderator before it is published."
+      innox_anonymous_ai_unavailable: "Anonymous content was held because the local moderation service was unavailable."
+      innox_ai_review: "The local moderation service requested a moderator review."
+      innox_ai_unavailable: "The post was held because the local moderation service was unavailable."

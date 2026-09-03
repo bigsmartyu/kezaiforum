@@ -1,0 +1,9 @@
+[Unit]
+Description=科仔审核模型论坛内部连接入口
+
+[Socket]
+ListenStream=172.17.0.1:11435
+NoDelay=true
+
+[Install]
+WantedBy=sockets.target

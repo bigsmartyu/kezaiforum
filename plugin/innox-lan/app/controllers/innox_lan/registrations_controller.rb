@@ -13,7 +13,7 @@ module ::InnoxLan
     skip_before_action :check_xhr
 
     MAX_AVATAR_BYTES = 5.megabytes
-    MIN_PASSWORD_LENGTH = 12
+    MIN_PASSWORD_LENGTH = 8
     USERNAME_PATTERN = /\A[a-z][a-z0-9_]{2,19}\z/i
     MEMBER_ID_FIELD = "kezai_member_id"
     MEMBER_CATEGORY_FIELD = "kezai_member_category"
@@ -23,14 +23,14 @@ module ::InnoxLan
     REMEMBERED_PROFILE_COOKIE = "kezai_last_profile"
 
     def new
-      return redirect_to Discourse.base_path("/latest") if current_user
+      return redirect_within_current_origin("/latest") if current_user
 
       requested_mode = params[:mode].to_s == "register" || request.path.end_with?("/signup") ? :register : :login
       render_registration_page(nil, :ok, pending_invite.present? ? :register : requested_mode)
     end
 
     def create
-      return redirect_to Discourse.base_path("/") if current_user
+      return redirect_within_current_origin("/") if current_user
 
       RateLimiter.new(nil, "kezai-signup-#{registration_client_ip}", 5, 1.hour).performed!
 
@@ -54,7 +54,7 @@ module ::InnoxLan
       redeem_invite!(invite, user) if invite
       remember_profile!(user)
       log_on_user(user, replay_anonymous_action: true)
-      redirect_to Discourse.base_path("/latest")
+      redirect_within_current_origin("/latest", status: :see_other)
     rescue RateLimiter::LimitExceeded
       render_registration_page("这台设备注册次数过多，请一小时后再试。", :too_many_requests, :register)
     rescue ActiveRecord::RecordInvalid => e
@@ -70,7 +70,7 @@ module ::InnoxLan
     end
 
     def login
-      return redirect_to Discourse.base_path("/latest") if current_user
+      return redirect_within_current_origin("/latest") if current_user
 
       username = normalize_username(params[:login_username])
       limiter_key = Digest::SHA256.hexdigest("#{registration_client_ip}:#{username.downcase}")
@@ -85,7 +85,7 @@ module ::InnoxLan
       ensure_member_identity!(user)
       remember_profile!(user)
       log_on_user(user, replay_anonymous_action: true)
-      redirect_to Discourse.base_path(user.admin? ? "/admin" : "/latest")
+      redirect_within_current_origin(user.admin? ? "/admin" : "/latest", status: :see_other)
     rescue RateLimiter::LimitExceeded
       render_registration_page("登录尝试次数过多，请一小时后再试。", :too_many_requests, :login)
     rescue InnoxLan::RegistrationError => e
@@ -96,13 +96,18 @@ module ::InnoxLan
     end
 
     def account
-      return redirect_to Discourse.base_path("/mobile") unless current_user
+      return redirect_within_current_origin("/mobile") unless current_user
 
       member_id, category = ensure_member_identity!(current_user)
       render_account_page(member_id, category)
     end
 
     private
+
+    def redirect_within_current_origin(path, status: :found)
+      response.headers["Location"] = Discourse.base_path(path)
+      head status
+    end
 
     def normalize_username(value)
       value.to_s.unicode_normalize.strip
@@ -227,7 +232,7 @@ module ::InnoxLan
     def friendly_record_error(error)
       messages = error.record.errors.full_messages.join(" ")
       return "该用户名已经被使用，请换一个。" if messages.match?(/username|用户名|taken/i)
-      return "密码不符合安全要求，请使用至少 12 位、同时包含字母和数字的密码。" if messages.match?(/password|密码/i)
+      return "密码不符合安全要求，请使用至少 8 位、同时包含字母和数字的密码。" if messages.match?(/password|密码/i)
 
       "注册资料未通过检查，请确认后重试。"
     end
@@ -275,18 +280,13 @@ module ::InnoxLan
           <link rel="manifest" href="#{manifest_url}">
           <title>科仔交流社区</title>
           <style>
-            :root{--navy:#071d49;--blue:#1769e0;--coral:#ff5d55;--cream:#fff8ec;--paper:#f4f6f9;--ink:#172033;--muted:#687184;--line:#dce1e8}*{box-sizing:border-box}html{background:var(--navy)}body{margin:0;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--paper)}.shell{min-height:100vh;display:grid;grid-template-columns:minmax(460px,1.14fr) minmax(420px,.86fr)}.story{position:relative;min-height:100vh;padding:42px clamp(34px,5vw,74px);background-image:linear-gradient(90deg,rgba(244,248,255,.98) 0%,rgba(244,248,255,.91) 31%,rgba(244,248,255,.2) 68%,rgba(244,248,255,0) 100%),url('#{mascot_url}');background-size:100% auto;background-position:center bottom;background-repeat:no-repeat;overflow:hidden}.brand{display:flex;align-items:center;gap:13px;position:relative;z-index:2}.brand img{width:58px;height:58px;object-fit:cover;border-radius:17px;box-shadow:0 10px 30px rgba(7,29,73,.2)}.brand-name{font-size:23px;font-weight:850;letter-spacing:.02em;color:var(--navy)}.brand-sub{font-size:11px;letter-spacing:.13em;color:#55708f;margin-top:4px}.story-copy{position:relative;z-index:2;max-width:545px;margin-top:clamp(46px,8vh,86px)}.kicker{display:inline-flex;align-items:center;gap:8px;color:var(--blue);font-size:13px;font-weight:800;letter-spacing:.12em}.kicker:before{content:"";width:28px;height:3px;border-radius:4px;background:var(--coral)}h1{font-size:clamp(42px,5vw,64px);line-height:1.06;letter-spacing:-.045em;color:var(--navy);margin:18px 0 20px}.story-copy p{font-size:clamp(17px,1.5vw,20px);line-height:1.75;color:#43536c;margin:0;max-width:500px}.principles{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}.principles span{font-size:13px;font-weight:700;color:var(--navy);border:1px solid rgba(7,29,73,.16);background:rgba(255,255,255,.74);border-radius:999px;padding:9px 14px;backdrop-filter:blur(8px)}.character-strip{display:flex;gap:10px;margin-top:18px}.character{display:flex;align-items:center;gap:9px;min-width:0;padding:7px 12px 7px 7px;border:1px solid rgba(7,29,73,.13);background:rgba(255,255,255,.8);border-radius:16px;backdrop-filter:blur(10px)}.character img{width:46px;height:46px;border-radius:13px;object-fit:cover;background:#eaf1ff}.character:first-child img{object-position:center 16%}.character b{display:block;color:var(--navy);font-size:12px}.character small{display:block;color:#708096;font-size:10px;margin-top:2px}.law-card{position:absolute;left:clamp(34px,5vw,74px);bottom:32px;z-index:2;max-width:500px;border-left:5px solid var(--coral);background:rgba(255,255,255,.85);backdrop-filter:blur(10px);padding:13px 16px;border-radius:0 14px 14px 0;color:#3e4a5e;font-size:12px;line-height:1.55;box-shadow:0 12px 35px rgba(7,29,73,.09)}.law-card strong{display:block;color:var(--navy);font-size:14px;margin-bottom:3px}.form-side{display:grid;place-items:center;padding:34px;background:linear-gradient(155deg,#f8f9fb,#e9edf3)}.card{width:min(100%,500px);max-height:calc(100vh - 42px);overflow:auto;background:#fff;border:1px solid #e0e4ea;border-radius:28px;padding:31px 32px 28px;box-shadow:0 28px 80px rgba(22,32,51,.16)}.mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#eef1f5;border-radius:14px;padding:5px;margin-bottom:23px}.mode-switch button{border:0;border-radius:10px;background:transparent;color:#6c7584;font-size:15px;font-weight:750;padding:11px;cursor:pointer}.mode-switch button.active{background:#fff;color:var(--navy);box-shadow:0 3px 12px rgba(15,25,45,.1)}.panel[hidden]{display:none}.eyebrow{color:var(--blue);font-size:12px;font-weight:850;letter-spacing:.13em}.card h2{font-size:30px;line-height:1.2;letter-spacing:-.03em;margin:9px 0 8px;color:var(--navy)}.intro{color:var(--muted);line-height:1.65;margin:0 0 19px;font-size:14px}.field{margin:14px 0}label{display:block;font-weight:750;margin-bottom:7px;color:#263044;font-size:14px}input[type=text],input[type=password],input[type=file]{width:100%;border:1px solid #cbd2dd;border-radius:12px;padding:12px 13px;background:#fbfcfd;font-size:16px;color:#151d2c}input[type=file]{padding:9px}input:focus{outline:3px solid rgba(23,105,224,.15);border-color:var(--blue)}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.hint{font-size:12px;color:#7b8493;margin-top:6px;line-height:1.5}.error{background:#fff0ef;color:#9c2925;border:1px solid #f1bbb6;border-radius:12px;padding:11px 13px;margin:14px 0}.avatar-stage{display:flex;align-items:center;gap:13px;padding:11px;border:1px solid #e0e4ea;border-radius:14px;background:#f7f8fa;margin:9px 0}.preview-shell{width:62px;height:62px;border-radius:50%;background:var(--navy);display:grid;place-items:center;overflow:hidden;flex:0 0 auto}.preview{width:100%;height:100%;object-fit:cover}.preview-copy{min-width:0}.preview-title{font-weight:750;color:#263044;margin-bottom:4px;font-size:14px}.preview-name{font-size:12px;color:#7b8490;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:265px}.agreement{display:flex;align-items:flex-start;gap:9px;margin:15px 0;padding:12px;background:#fff8ec;border:1px solid #f1dfbd;border-radius:12px;color:#4d5666;font-size:12px;line-height:1.55}.agreement input{margin-top:3px;accent-color:var(--blue)}.primary{width:100%;border:0;border-radius:12px;background:var(--blue);color:#fff;font-size:16px;font-weight:800;padding:14px;margin-top:4px;cursor:pointer;box-shadow:0 10px 24px rgba(23,105,224,.22)}.primary:hover{background:#0d58c5}.primary:disabled{opacity:.62;cursor:wait}.security-note{font-size:12px;color:#737c8a;background:#f2f4f7;border-left:3px solid var(--coral);padding:10px 12px;margin:14px 0 0;line-height:1.55}.privacy{text-align:center;font-size:11px;color:#969daa;margin:13px 0 0}@media(max-width:940px){.shell{display:block}.story{min-height:590px;padding:28px 24px;background-position:center bottom}.story-copy{margin-top:44px;max-width:76%}h1{font-size:44px}.law-card{left:24px;right:24px;bottom:25px;max-width:560px}.form-side{padding:23px 15px 36px}.card{max-height:none;padding:27px 21px 24px}}@media(max-width:560px){.story{min-height:540px;background-image:linear-gradient(180deg,rgba(244,248,255,.98),rgba(244,248,255,.78) 55%,rgba(244,248,255,.12) 86%),url('#{mascot_url}');background-position:center bottom}.brand img{width:50px;height:50px}.brand-name{font-size:20px}.story-copy{margin-top:32px;max-width:100%}h1{font-size:34px;max-width:340px}.story-copy p{font-size:15px;max-width:325px}.principles{display:none}.character-strip{margin-top:14px}.character{padding-right:8px}.character img{width:38px;height:38px}.character small{display:none}.law-card{font-size:11px}.field-grid{grid-template-columns:1fr}.card h2{font-size:27px}}
-            .app-download{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-9px 0 20px;padding:10px 12px;border:1px solid #ccdcf7;border-radius:14px;background:#f1f6ff;color:var(--navy);text-decoration:none}.app-download span{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800}.app-download img{width:38px;height:38px;border-radius:11px;object-fit:cover}.app-download em{font-style:normal;color:var(--blue);font-size:12px;font-weight:800}
+            :root{--navy:#071d49;--blue:#1769e0;--coral:#ff5d55;--paper:rgba(255,255,255,.92);--ink:#172033;--muted:#687184;--line:#dce1e8}*{box-sizing:border-box}html,body{margin:0;min-height:100%}body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:#eaf2ff}.page{position:relative;min-height:100vh;display:grid;place-items:center;padding:clamp(18px,4vw,48px);overflow:hidden;background:#eaf2ff}.wallpaper{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:calc(50% + 92px) bottom;filter:saturate(1.1) contrast(1.08);opacity:.98;z-index:0}.page:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(245,248,255,.34) 0%,rgba(245,248,255,.16) 24%,rgba(245,248,255,.42) 40%,rgba(245,248,255,.34) 58%,rgba(245,248,255,.08) 76%,rgba(245,248,255,.18) 100%),linear-gradient(180deg,rgba(245,248,255,.12) 0%,rgba(245,248,255,.05) 52%,rgba(245,248,255,.22) 100%);z-index:1;pointer-events:none}.brand{position:absolute;top:clamp(18px,3vw,34px);left:clamp(18px,4vw,54px);display:flex;align-items:center;gap:12px;z-index:2}.brand img{width:58px;height:58px;border-radius:18px;object-fit:cover;box-shadow:0 16px 34px rgba(7,29,73,.16)}.brand-name{font-size:24px;line-height:1;font-weight:850;color:var(--navy)}.brand-sub{margin-top:5px;font-size:11px;letter-spacing:.14em;color:#496482}.card{width:min(432px,calc(100vw - 32px));max-height:calc(100vh - 42px);overflow:auto;border:1px solid rgba(255,255,255,.85);border-radius:28px;padding:30px;background:var(--paper);backdrop-filter:blur(18px);box-shadow:0 34px 90px rgba(13,43,93,.28);z-index:3}.mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;margin-bottom:18px;border-radius:15px;background:#e9eef5}.mode-switch button{border:0;border-radius:11px;padding:11px 8px;background:transparent;color:#6a7486;font-size:15px;font-weight:800;cursor:pointer}.mode-switch button.active{background:#fff;color:var(--navy);box-shadow:0 4px 12px rgba(15,31,60,.1)}.panel[hidden]{display:none}.app-download{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;padding:10px 12px;border:1px solid #c7daf8;border-radius:14px;background:#f0f6ff;text-decoration:none;color:var(--navy);font-size:13px;font-weight:850}.app-download span{display:flex;align-items:center;gap:10px;min-width:0}.app-download img{width:38px;height:38px;border-radius:12px;object-fit:cover;flex:0 0 auto}.app-download em{font-style:normal;color:var(--blue);white-space:nowrap;font-size:12px;font-weight:850}.eyebrow{color:var(--blue);font-size:12px;font-weight:900;letter-spacing:.14em}.card h2{margin:8px 0 8px;font-size:31px;line-height:1.15;color:var(--navy);letter-spacing:0}.intro{margin:0 0 18px;color:var(--muted);font-size:14px;line-height:1.65}.field{margin:14px 0}label{display:block;margin:12px 0 7px;font-size:14px;font-weight:800;color:#17233c}input[type=text],input[type=password],input[type=file]{width:100%;border:1px solid #c6d1e2;border-radius:12px;padding:12px 13px;background:rgba(255,255,255,.9);color:#101828;font-size:16px;outline:0}input[type=file]{padding:9px}input:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(23,105,224,.14)}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.hint{font-size:12px;color:#7b8493;margin-top:6px;line-height:1.5}.error{background:#fff0ef;color:#9c2925;border:1px solid #f1bbb6;border-radius:12px;padding:11px 13px;margin:14px 0}.avatar-stage{display:flex;align-items:center;gap:13px;padding:12px;margin-bottom:15px;border:1px solid rgba(193,205,226,.78);border-radius:14px;background:rgba(248,250,253,.86)}.preview-shell{width:54px;height:54px;border-radius:50%;background:var(--navy);display:grid;place-items:center;overflow:hidden;flex:0 0 auto}.preview{width:100%;height:100%;object-fit:cover}.preview-copy{min-width:0}.preview-title{font-weight:800;color:#263044;margin-bottom:3px;font-size:14px}.preview-name{font-size:12px;color:#748198;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:265px}.agreement{display:flex;align-items:flex-start;gap:9px;margin:15px 0;padding:12px;background:#fff8ec;border:1px solid #f1dfbd;border-radius:12px;color:#4d5666;font-size:12px;line-height:1.55}.agreement input{margin-top:3px;accent-color:var(--blue)}.primary{width:100%;margin-top:4px;border:0;border-radius:13px;padding:14px;background:var(--blue);color:#fff;font-size:16px;font-weight:900;box-shadow:0 14px 28px rgba(23,105,224,.25);cursor:pointer}.primary:hover{background:#0d58c5}.primary:disabled{opacity:.62;cursor:wait}.security-note{margin-top:14px;padding:10px 12px;border-left:3px solid var(--coral);background:rgba(246,248,252,.82);color:#617087;font-size:12px;line-height:1.55}.privacy{text-align:center;font-size:11px;color:#969daa;margin:13px 0 0}@media(max-width:720px){.page{align-items:center;padding:76px 14px 22px}.wallpaper{object-fit:cover;object-position:58% bottom;opacity:.9}.page:before{background:linear-gradient(180deg,rgba(245,248,255,.78) 0%,rgba(245,248,255,.4) 38%,rgba(245,248,255,.18) 100%),linear-gradient(90deg,rgba(245,248,255,.18) 0%,rgba(245,248,255,.46) 50%,rgba(245,248,255,.12) 100%)}.brand{top:18px;left:18px}.brand img{width:50px;height:50px;border-radius:15px}.brand-name{font-size:20px}.card{width:min(100%,420px);padding:22px 18px;border-radius:24px}.card h2{font-size:28px}.field-grid{grid-template-columns:1fr}.app-download span{font-size:12px}.app-download img{width:34px;height:34px}.preview-shell{width:50px;height:50px}}@media(min-width:721px){.card{transform:translateY(8px)}}
           </style>
         </head>
         <body data-initial-mode="#{initial_mode}" data-remembered-username="#{saved_username_value}" data-default-avatar="#{icon_value}">
-          <main class="shell">
-            <section class="story">
-              <div class="brand"><img src="#{icon_url}" alt="科仔形象"><div><div class="brand-name">科仔交流社区</div><div class="brand-sub">KEZAI COMMUNITY</div></div></div>
-              <div class="story-copy"><div class="kicker">科仔伙伴共同在线</div><h1>一起创造，<br>真诚交流</h1><p>人物科仔陪你分享灵感，宇航科仔陪你探索问题。以真实身份连接同事和伙伴，让讨论、聊天与协作都更有温度。</p><div class="principles"><span>真实身份</span><span>创意分享</span><span>公屏聊天</span><span>守法交流</span></div><div class="character-strip"><div class="character"><img src="#{girl_url}" alt="人物科仔"><span><b>创意科仔</b><small>灵感与协作伙伴</small></span></div><div class="character"><img src="#{astronaut_url}" alt="宇航科仔"><span><b>宇航科仔</b><small>探索与讨论伙伴</small></span></div></div></div>
-              <div class="law-card"><strong>请遵纪守法</strong>禁止发布违法、有害、欺诈、色情、暴力、侵害隐私或侮辱他人的内容。违规信息将被拦截、进入审核或删除，严重情况将暂停账号。</div>
-            </section>
-            <section class="form-side">
+          <main class="page">
+            <img class="wallpaper" src="#{mascot_url}" alt="">
+            <div class="brand"><img src="#{icon_url}" alt="科仔形象"><div><div class="brand-name">科仔交流社区</div><div class="brand-sub">KEZAI COMMUNITY</div></div></div>
               <div class="card">
                 <div class="mode-switch" role="tablist"><button type="button" data-mode-button="login">已有账号登录</button><button type="button" data-mode-button="register">新成员实名登记</button></div>
                 <a class="app-download" href="#{download_url}"><span><img src="#{astronaut_url}" alt="宇航科仔图标">安卓最新版 · 科仔交流社区 v1.3</span><em>下载安装</em></a>
@@ -295,15 +295,14 @@ module ::InnoxLan
                   <div class="eyebrow">WELCOME BACK</div><h2>登录社区</h2><p class="intro">使用用户名和密码进入。登录状态会保存在当前设备上。</p>
                   <div class="avatar-stage" id="remembered-profile"><div class="preview-shell"><img class="preview" id="login-avatar-preview" src="#{visible_login_avatar_value}" data-remembered-avatar="#{saved_avatar_value}" alt="上次账号头像"></div><div class="preview-copy"><div class="preview-title">上次账号</div><div class="preview-name" id="login-avatar-name">#{saved_profile_label_value}</div></div></div>
                   <form method="post" action="#{Discourse.base_path('/join/login')}" data-submit-form><input type="hidden" name="authenticity_token" value="#{ERB::Util.html_escape(token)}"><div class="field"><label for="login-username">用户名</label><input id="login-username" name="login_username" type="text" minlength="3" maxlength="20" autocomplete="username" value="#{login_username_value}" required></div><div class="field"><label for="login-password">密码</label><input id="login-password" name="login_password" type="password" maxlength="200" autocomplete="current-password" required></div><button class="primary" type="submit">登录并进入社区</button></form>
-                  <div class="security-note">管理员也必须使用用户名和密码登录，不再提供“输入特殊姓名直接进入”的方式。</div>
+                  <div class="security-note">请共同维护社区纯净度：不发布广告引流、恶意攻击、低俗擦边、泄露隐私或违法违规内容。</div>
                 </section>
                 <section class="panel" data-mode-panel="register">
                   <div class="eyebrow">REAL-NAME REGISTRATION</div><h2>新成员登记</h2><p class="intro">账号用于登录，真实姓名和办公室用于社区内部身份对应。带星号内容均为必填。</p>
-                  <form method="post" action="#{Discourse.base_path('/join')}" enctype="multipart/form-data" id="join-form" data-submit-form><input type="hidden" name="authenticity_token" value="#{ERB::Util.html_escape(token)}"><input type="hidden" name="invite_key" value="#{invite_key}"><div class="field-grid"><div class="field"><label for="username">用户名 *</label><input id="username" name="username" type="text" minlength="3" maxlength="20" pattern="[A-Za-z][A-Za-z0-9_]{2,19}" autocomplete="username" placeholder="例如 kezai01" value="#{username_value}" required></div><div class="field"><label for="password">密码 *</label><input id="password" name="password" type="password" minlength="12" maxlength="200" autocomplete="new-password" placeholder="至少12位，含字母和数字" required></div></div><div class="field-grid"><div class="field"><label for="real-name">真实姓名 *</label><input id="real-name" name="real_name" type="text" minlength="2" maxlength="30" autocomplete="name" placeholder="请填写本人姓名" value="#{real_name_value}" required></div><div class="field"><label for="office">所在办公室 *</label><input id="office" name="office" type="text" minlength="2" maxlength="50" autocomplete="organization" placeholder="例如 A302" value="#{office_value}" required></div></div><div class="field"><label for="avatar">头像（可选）</label><div class="avatar-stage"><div class="preview-shell"><img class="preview" id="avatar-preview" src="#{icon_url}" alt="当前头像预览"></div><div class="preview-copy"><div class="preview-title">头像预览</div><div class="preview-name" id="avatar-name">未选择时使用系统头像</div></div></div><input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/webp,image/gif"><div class="hint">支持 JPG、PNG、WebP 或 GIF，不超过 5MB。</div></div><label class="agreement"><input name="legal_agreement" type="checkbox" value="1" required><span>我确认填写的是本人真实姓名和实际办公地点，并承诺遵守法律法规与社区守则。此处是内部实名登记，不替代证件或公安身份核验。</span></label><button class="primary" type="submit">完成登记并进入社区</button></form>
+                  <form method="post" action="#{Discourse.base_path('/join')}" enctype="multipart/form-data" id="join-form" data-submit-form><input type="hidden" name="authenticity_token" value="#{ERB::Util.html_escape(token)}"><input type="hidden" name="invite_key" value="#{invite_key}"><div class="field-grid"><div class="field"><label for="username">用户名 *</label><input id="username" name="username" type="text" minlength="3" maxlength="20" pattern="[A-Za-z][A-Za-z0-9_]{2,19}" autocomplete="username" placeholder="例如 kezai01" value="#{username_value}" required></div><div class="field"><label for="password">密码 *</label><input id="password" name="password" type="password" minlength="8" maxlength="200" autocomplete="new-password" placeholder="至少8位，含字母和数字" required></div></div><div class="field-grid"><div class="field"><label for="real-name">真实姓名 *</label><input id="real-name" name="real_name" type="text" minlength="2" maxlength="30" autocomplete="name" placeholder="请填写本人姓名" value="#{real_name_value}" required></div><div class="field"><label for="office">所在办公室 *</label><input id="office" name="office" type="text" minlength="2" maxlength="50" autocomplete="organization" placeholder="例如 A302" value="#{office_value}" required></div></div><div class="field"><label for="avatar">头像（可选）</label><div class="avatar-stage"><div class="preview-shell"><img class="preview" id="avatar-preview" src="#{icon_url}" alt="当前头像预览"></div><div class="preview-copy"><div class="preview-title">头像预览</div><div class="preview-name" id="avatar-name">未选择时使用系统头像</div></div></div><input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/webp,image/gif"><div class="hint">支持 JPG、PNG、WebP 或 GIF，不超过 5MB。</div></div><label class="agreement"><input name="legal_agreement" type="checkbox" value="1" required><span>我确认填写的是本人真实姓名和实际办公地点，并承诺遵守法律法规与社区守则。此处是内部实名登记，不替代证件或公安身份核验。</span></label><button class="primary" type="submit">完成登记并进入社区</button></form>
                   <div class="privacy">实名资料仅用于社区内部识别与管理 · 请勿共用账号</div>
                 </section>
               </div>
-            </section>
           </main>
           <script nonce="#{ERB::Util.html_escape(script_nonce)}">#{script_source}</script>
         </body>

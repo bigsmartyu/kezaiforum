@@ -2,3 +2,21 @@ plugins:
   innox_lan_enabled:
     default: true
     client: false
+  innox_ai_moderation_enabled:
+    default: true
+    client: false
+  innox_ai_moderation_url:
+    default: "http://172.17.0.1:11435/api/generate"
+    client: false
+  innox_ai_moderation_model:
+    default: "qwen3guard:0.6b"
+    client: false
+  innox_ai_moderation_timeout_seconds:
+    default: 10
+    min: 2
+    max: 30
+    client: false
+  innox_anonymous_category_id:
+    default: 0
+    min: 0
+    client: false

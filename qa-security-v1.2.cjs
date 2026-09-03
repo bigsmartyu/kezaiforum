@@ -32,10 +32,10 @@ try {
 
   await page.goto(`${baseUrl}/mobile`, { waitUntil: "networkidle" });
   expect(await page.title() === "科仔交流社区", "页面标题没有更新");
-  expect(await page.getByText("请遵纪守法").isVisible(), "守法提示不可见");
+  expect(await page.getByText("请共同维护社区纯净度").isVisible(), "社区纯净提示不可见");
   expect(await page.locator('input[name="login_password"]').isVisible(), "登录密码输入框不可见");
   expect(await page.locator('input[name="office"]').count() === 1, "办公室字段缺失");
-  expect((await page.locator(".story").evaluate((el) => getComputedStyle(el).backgroundImage)).includes("mascot-board"), "新科仔背景没有生效");
+  expect((await page.locator(".wallpaper").getAttribute("src")).includes("kezai-duo-v2"), "新科仔背景没有生效");
   result.checks.anonymousCannotSeeForum = !(await page.goto(`${baseUrl}/latest`, { waitUntil: "networkidle" })).url().includes("/latest");
   expect(result.checks.anonymousCannotSeeForum, "未登录用户仍能直接进入论坛");
 

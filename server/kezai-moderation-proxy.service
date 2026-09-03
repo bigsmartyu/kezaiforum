@@ -1,0 +1,11 @@
+[Unit]
+Description=科仔审核模型论坛内部连接
+Requires=kezai-moderation-proxy.socket
+After=ollama.service
+
+[Service]
+ExecStart=/lib/systemd/systemd-socket-proxyd 127.0.0.1:11434
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes

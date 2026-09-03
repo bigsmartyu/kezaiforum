@@ -10,7 +10,7 @@ checks = {
   signup_cta_disabled: !SiteSetting.enable_signup_cta,
   full_name_required: SiteSetting.full_name_requirement == "required_at_signup",
   profiles_private: SiteSetting.hide_user_profiles_from_public,
-  password_minimum: SiteSetting.min_password_length >= 12,
+  password_minimum: SiteSetting.min_password_length >= 8,
   admin_password_minimum: SiteSetting.min_admin_password_length >= 20,
   persistent_sessions: SiteSetting.persistent_sessions && SiteSetting.maximum_session_age >= 8760,
   first_posts_reviewed: SiteSetting.approve_post_count == 2,

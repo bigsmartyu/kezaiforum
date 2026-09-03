@@ -56,10 +56,10 @@ def run():
             response = page.goto(f"{BASE_URL}/mobile", wait_until="networkidle", timeout=30000)
             check(response and response.status == 200, "移动入口无法打开")
             check(page.title() == "科仔交流社区", "网页标题不正确")
-            check(page.get_by_text("请遵纪守法").is_visible(), "守法提示不可见")
+            check(page.get_by_text("请共同维护社区纯净度").is_visible(), "社区纯净提示不可见")
             check(page.locator('input[name="login_password"]').is_visible(), "登录密码输入框不可见")
-            background = page.locator(".story").evaluate("el => getComputedStyle(el).backgroundImage")
-            check("mascot-board" in background, "科仔背景板没有生效")
+            background = page.locator(".wallpaper").get_attribute("src") or ""
+            check("kezai-duo-v2" in background, "科仔背景板没有生效")
             page.screenshot(path=EVIDENCE / "final-desktop-login.png", full_page=True)
             result["checks"]["desktop_login"] = True
 
