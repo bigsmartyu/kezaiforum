@@ -1,0 +1,42 @@
+templates:
+  - "templates/postgres.template.yml"
+  - "templates/redis.template.yml"
+  - "templates/web.template.yml"
+  - "templates/web.ratelimited.template.yml"
+
+expose:
+  - "80:80"
+
+params:
+  db_default_text_search_config: "pg_catalog.simple"
+
+env:
+  LC_ALL: en_US.UTF-8
+  LANG: en_US.UTF-8
+  LANGUAGE: en_US.UTF-8
+  DISCOURSE_DEFAULT_LOCALE: zh_CN
+  DISCOURSE_HOSTNAME: "kezaiforum.xyz"
+  DISCOURSE_DEVELOPER_EMAILS: "admin@innoxsz.local"
+  DISCOURSE_SKIP_EMAIL_SETUP: "1"
+
+volumes:
+  - volume:
+      host: /var/discourse/shared/standalone
+      guest: /shared
+  - volume:
+      host: /var/discourse/shared/standalone/log/var-log
+      guest: /var/log
+  - volume:
+      host: /var/discourse/shared/standalone/innox-lan
+      guest: /var/www/discourse/plugins/innox-lan
+
+hooks:
+  after_code:
+    - exec:
+        cd: $home/plugins
+        cmd:
+          - git clone https://github.com/discourse/docker_manager.git
+
+run:
+  - exec: echo "Beginning of custom commands"
+  - exec: echo "End of custom commands"

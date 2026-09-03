@@ -1,0 +1,4 @@
+plugins:
+  innox_lan_enabled:
+    default: true
+    client: false

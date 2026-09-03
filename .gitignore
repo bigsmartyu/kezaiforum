@@ -1,0 +1,24 @@
+# Local build and cache output
+android/.gradle/
+android/build/
+android/app/build/
+__pycache__/
+.gstack/
+
+# Local QA evidence and temporary artifacts
+evidence/
+*.idsig
+*.tar.gz
+cloudflared-linux-arm64.deb
+server/cloudflared-config.yml
+
+# Historical APK copies kept outside source control
+Innoxsz-Forum-v*.apk
+Innoxsz内网论坛-v*.apk
+Kezai-Community-v1.2.apk
+科仔交流社区-v1.2.apk
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+*.log

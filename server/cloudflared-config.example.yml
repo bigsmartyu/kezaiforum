@@ -1,0 +1,10 @@
+tunnel: YOUR_TUNNEL_ID
+credentials-file: /home/YOUR_USER/.cloudflared/YOUR_TUNNEL_ID.json
+protocol: http2
+
+ingress:
+  - hostname: kezaiforum.xyz
+    service: http://127.0.0.1:80
+    originRequest:
+      httpHostHeader: kezaiforum.xyz
+  - service: http_status:404

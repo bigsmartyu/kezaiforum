@@ -1,0 +1,15 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'group.innoxsz.forum'
+    compileSdk 35
+    buildToolsVersion '35.0.0'
+
+    defaultConfig {
+        applicationId 'group.innoxsz.forum'
+        minSdk 24
+        targetSdk 35
+        versionCode 4
+        versionName '1.3.0'
+    }
+}
