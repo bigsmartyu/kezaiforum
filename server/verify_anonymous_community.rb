@@ -71,11 +71,25 @@ ActiveRecord::Base.transaction do
       raw: "这是一条用于验证匿名发布审核流程的普通测试内容。",
       category: category.id,
     ).perform
-  verify!(clean_result.success?, "anonymous post could not enter review")
-  verify!(clean_result.action == :enqueued, "anonymous post bypassed the review queue")
-  verify!(clean_result.reviewable&.pending?, "anonymous review item is not pending")
-  verify!(clean_result.reviewable.payload.dig("innox_ai_moderation", "anonymous") == true, "anonymous review marker is missing")
-  verify!(clean_result.reviewable.target_created_by.master_user.id == alice.id, "review item cannot be traced to the member")
+  verify!(
+    clean_result.success?,
+    "safe anonymous post was not approved by AI: action=#{clean_result.action} errors=#{clean_result.errors.full_messages.join("|")}",
+  )
+  verify!(
+    clean_result.post.present? && clean_result.reviewable.blank?,
+    "safe anonymous post was not published: action=#{clean_result.action} reviewable=#{clean_result.reviewable&.id}",
+  )
+  verify!(clean_result.post&.user&.master_user&.id == alice.id, "published anonymous post cannot be traced to the member")
+
+  rejected_result =
+    NewPostManager.new(
+      shadow,
+      title: "匿名违规验证 #{suffix}",
+      raw: "你这个蠢货，滚开。",
+      category: category.id,
+    ).perform
+  verify!(rejected_result.failed?, "unsafe anonymous post was not rejected by AI")
+  verify!(rejected_result.errors.full_messages.join.include?("未通过 AI 审核"), "AI rejection message is unclear")
 
   outside_result =
     NewPostManager.new(
@@ -88,7 +102,8 @@ ActiveRecord::Base.transaction do
   verify!(outside_result.errors.full_messages.join.include?("匿名身份只能"), "outside-category error is unclear")
 
   puts "ANONYMOUS_FLOW=PASS"
-  puts "ANONYMOUS_REVIEW=PASS"
+  puts "ANONYMOUS_AI_APPROVAL=PASS"
+  puts "ANONYMOUS_AI_REJECTION=PASS"
   puts "ADMIN_TRACEABILITY=PASS"
   puts "OUTSIDE_CATEGORY_BLOCK=PASS"
   puts "FORUM_PRIVATE_MESSAGE=PASS"

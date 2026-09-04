@@ -4,7 +4,7 @@ Kezai Forum is the source package for 科仔交流社区. It contains the Discou
 
 ## Contents
 
-- `plugin/innox-lan`: Discourse plugin for username/password registration, real-name office profile fields, member IDs, anonymous-community review, local content moderation, login page, app download route, and branded assets.
+- `plugin/innox-lan`: Discourse plugin for username/password registration, real-name office profile fields, member IDs, AI-approved anonymous posts, local content moderation, opt-in public-chat AI replies, login page, app download route, and branded assets.
 - `android`: Android app project for 科仔交流社区.
 - `brand`: Source branding images used by the forum and app.
 - `server`: Deployment helper files for the Jetson/Discourse host.
@@ -20,7 +20,9 @@ The Discourse app config is in `server/app.yml`. The custom plugin should be mou
 /var/www/discourse/plugins/innox-lan
 ```
 
-After the plugin is loaded, run `server/enable_anonymous_community.rb` once in the production Discourse environment. It creates the “匿名社区” category, enables anonymous identity switching for registered members, keeps anonymous posts pending for moderator approval, exposes the approved member profile fields to signed-in members, and enables forum and chat direct messages. `server/verify_anonymous_community.rb` performs a rollback-only acceptance check without leaving test accounts or messages behind.
+After the plugin is loaded, run `server/enable_anonymous_community.rb` once in the production Discourse environment. It creates the “匿名社区” category, enables anonymous identity switching for registered members, lets the local safety model approve safe anonymous posts and reject unsafe ones, exposes the approved member profile fields to signed-in members, and enables forum and chat direct messages. If the safety model is unavailable, anonymous posts fail closed into the staff review queue. `server/verify_anonymous_community.rb` performs a rollback-only acceptance check without leaving test accounts or messages behind.
+
+Run `server/enable_ai_chat.rb` after the general `qwen3:0.6b` model is installed in Ollama. It provisions a clearly labeled non-human “科仔 AI 助手” account. In public chat channels, members can trigger a concise reply with `@kezai_ai`, `科仔AI`, or `科仔助手`. Direct-message channels are deliberately excluded, and both the question and generated answer pass through the independent `qwen3guard:0.6b` safety model.
 
 ## Android Build
 

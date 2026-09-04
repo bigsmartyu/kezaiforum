@@ -137,8 +137,23 @@ async function jsonRequest(page, url, options = {}) {
       }),
     });
     expect(anonymousPost.status === 200, `匿名内容提交失败，状态 ${anonymousPost.status}`);
-    expect(anonymousPost.body.action === "enqueued", "匿名内容没有进入待审状态");
-    result.checks.anonymousAlwaysReviewed = true;
+    expect(Boolean(anonymousPost.body.id), "安全匿名内容没有被 AI 批准公开");
+    result.checks.anonymousSafeAutoApproved = true;
+
+    const rejectedAnonymousPost = await jsonRequest(alicePage, "/posts.json", {
+      method: "POST",
+      body: JSON.stringify({
+        title: `匿名违规网页验收 ${stamp}`,
+        raw: "你这个蠢货，滚开。",
+        category: 5,
+      }),
+    });
+    expect(rejectedAnonymousPost.status >= 400, "违规匿名内容没有被 AI 退回");
+    expect(
+      JSON.stringify(rejectedAnonymousPost.body).includes("未通过 AI 审核"),
+      "AI 退回提示不清晰",
+    );
+    result.checks.anonymousUnsafeRejected = true;
 
     const outsidePost = await jsonRequest(alicePage, "/posts.json", {
       method: "POST",

@@ -20,3 +20,20 @@ plugins:
     default: 0
     min: 0
     client: false
+  innox_ai_chat_enabled:
+    default: true
+    client: false
+  innox_ai_chat_url:
+    default: "http://172.17.0.1:11435/api/chat"
+    client: false
+  innox_ai_chat_model:
+    default: "qwen3:0.6b"
+    client: false
+  innox_ai_chat_bot_username:
+    default: "kezai_ai"
+    client: false
+  innox_ai_chat_timeout_seconds:
+    default: 20
+    min: 5
+    max: 60
+    client: false

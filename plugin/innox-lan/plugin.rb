@@ -2,7 +2,7 @@
 
 # name: innox-lan
 # about: Secure LAN registration and identity mapping for 科仔交流社区
-# version: 1.5.0
+# version: 1.6.0
 # authors: 科仔交流社区
 # url: https://kezaiforum.xyz
 # required_version: 3.2.0
@@ -17,6 +17,7 @@ require_relative "lib/innox_lan/engine"
 
 after_initialize do
   require_relative "lib/innox_lan/content_moderation"
+  require_relative "lib/innox_lan/chat_ai"
   require_relative "lib/innox_lan/invites_controller_extension"
   ::InvitesController.prepend(::InnoxLan::InvitesControllerExtension)
 
@@ -57,9 +58,18 @@ after_initialize do
 
     if anonymous_user
       manager.args[:innox_ai_moderation] = result.review_payload.merge(anonymous: true)
-      next manager.enqueue(
-        result.error? ? :innox_anonymous_ai_unavailable : :innox_anonymous_review,
+      next if result.safe?
+
+      if result.error?
+        next manager.enqueue(:innox_anonymous_ai_unavailable)
+      end
+
+      blocked = NewPostResult.new(:created_post, false)
+      blocked.errors.add(
+        :base,
+        "这条匿名内容未通过 AI 审核，尚未发布。请调整措辞后重试；如认为判断有误，请联系管理员。",
       )
+      next blocked
     end
 
     next if result.safe?
@@ -88,6 +98,15 @@ after_initialize do
   end
   if defined?(::Chat::UpdateMessage)
     ::Chat::UpdateMessage.prepend(::InnoxLan::ChatUpdateMessageModeration)
+  end
+
+  DiscourseEvent.on(:chat_message_created) do |message, channel, user, _metadata = nil|
+    next unless SiteSetting.innox_ai_chat_enabled
+    next if user&.bot? || user&.anonymous?
+    next if channel&.direct_message_channel?
+    next unless InnoxLan::ChatAI.triggered?(message.message)
+
+    Jobs.enqueue(:kezai_chat_reply, chat_message_id: message.id)
   end
 
   ::ApplicationController.class_eval do

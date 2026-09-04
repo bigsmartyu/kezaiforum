@@ -6,9 +6,14 @@ en:
     innox_ai_moderation_model: "Local moderation model name"
     innox_ai_moderation_timeout_seconds: "Maximum seconds to wait for one moderation decision"
     innox_anonymous_category_id: "Category in which anonymous identities may create topics and replies"
+    innox_ai_chat_enabled: "Enable the local Kezai AI assistant in public chat channels"
+    innox_ai_chat_url: "Internal URL of the local chat model"
+    innox_ai_chat_model: "Local conversational model name"
+    innox_ai_chat_bot_username: "Username of the Kezai AI chat bot"
+    innox_ai_chat_timeout_seconds: "Maximum seconds to wait for one chat reply"
   reviewables:
     reasons:
-      innox_anonymous_review: "Anonymous content must be approved by a moderator before it is published."
-      innox_anonymous_ai_unavailable: "Anonymous content was held because the local moderation service was unavailable."
+      innox_anonymous_review: "Anonymous content requires review."
+      innox_anonymous_ai_unavailable: "Anonymous content was held because the local AI reviewer was unavailable."
       innox_ai_review: "The local moderation service requested a moderator review."
       innox_ai_unavailable: "The post was held because the local moderation service was unavailable."
