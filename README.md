@@ -1,46 +1,76 @@
-# Kezai Forum
+# 科仔交流社区 / Kezai Forum
 
-Kezai Forum is the source package for 科仔交流社区. It contains the Discourse plugin used for the forum registration flow, the Android app wrapper, branding assets, and server-side deployment helpers.
+一个基于 Discourse 的自托管社区参考项目，包含实名登记、成员编号、匿名社区、私聊、本地内容审核、公聊机器人、品牌页面与安卓应用。
 
-## Contents
+> 在线体验：<https://kezaiforum.xyz>
+>
+> 安卓 v1.3：[Kezai-Community-v1.3.apk](./Kezai-Community-v1.3.apk)
 
-- `plugin/innox-lan`: Discourse plugin for username/password registration, real-name office profile fields, member IDs, AI-approved anonymous posts, local content moderation, opt-in public-chat AI replies, login page, app download route, and branded assets.
-- `android`: Android app project for 科仔交流社区.
-- `brand`: Source branding images used by the forum and app.
-- `server`: Deployment helper files for the Jetson/Discourse host.
-- `Kezai-Community-v1.3.apk` and `科仔交流社区-v1.3.apk`: Current Android install package copies.
+![科仔交流社区主视觉](./plugin/innox-lan/assets/kezai-duo-v2-web.jpg)
 
-## Server Notes
+## 项目特点
 
-The real Cloudflare Tunnel config is intentionally not committed. Start from `server/cloudflared-config.example.yml` and fill in the tunnel ID and credentials path for the target server.
+- 用户名和密码登记，不依赖邮箱激活。
+- 记录真实姓名、办公室和可选头像，生成固定成员编号。
+- 登录入口记住上次账号与头像，会话默认保持一年。
+- 内网入口和公网入口共存，安卓应用优先公网、失败后回退内网。
+- 匿名身份仅限指定“匿名社区”，普通成员看不到实名信息，管理员可追溯。
+- 发帖、回复、聊天和私信使用“关键词底线＋本地审核模型＋人工待审”。
+- 审核服务异常时失败关闭，风险内容不会直接公开。
+- 公聊中的“科仔 AI 助手”只在被点名时回复，并同时检查提问和回答。
+- 手机、横屏和桌面页面分别适配。
 
-The Discourse app config is in `server/app.yml`. The custom plugin should be mounted into the Discourse container at:
+## 内容目录
 
 ```text
-/var/www/discourse/plugins/innox-lan
+android/                 Android WebView 应用
+brand/                   品牌主视觉与应用图标
+plugin/innox-lan/        Discourse 插件
+server/                  部署、加固和验收辅助脚本
+docs/SETTINGS.md         可调设置与默认值
+docs/DEPLOYMENT.md       部署顺序与注意事项
+docs/IDEA_NOTES.md       产品思路、设计与取舍
+docs/PROJECT_HISTORY.md  问题记录和优化过程
 ```
 
-After the plugin is loaded, run `server/enable_anonymous_community.rb` once in the production Discourse environment. It creates the “匿名社区” category, enables anonymous identity switching for registered members, lets the local safety model approve safe anonymous posts and reject unsafe ones, exposes the approved member profile fields to signed-in members, and enables forum and chat direct messages. If the safety model is unavailable, anonymous posts fail closed into the staff review queue. `server/verify_anonymous_community.rb` performs a rollback-only acceptance check without leaving test accounts or messages behind.
+## 快速开始
 
-Run `server/enable_ai_chat.rb` after the general `qwen3:0.6b` model is installed in Ollama. It provisions a clearly labeled non-human “科仔 AI 助手” account. In public chat channels, members can trigger a concise reply with `@kezai_ai`, `科仔AI`, or `科仔助手`. Direct-message channels are deliberately excluded, and both the question and generated answer pass through the independent `qwen3guard:0.6b` safety model.
-
-## Android Build
-
-Open the `android` folder with Android Studio, or build from the command line:
+1. 准备一台可运行 Discourse 的设备或服务器。
+2. 按 [部署说明](./docs/DEPLOYMENT.md) 挂载插件并完成首次初始化。
+3. 根据 [设置说明](./docs/SETTINGS.md) 修改域名、内部地址、匿名板块和本地模型名称。
+4. 打开 `android/app/src/main/java/group/innoxsz/forum/MainActivity.java`，替换示例公网地址和内网备用地址。
+5. 用 Android Studio 打开 `android/`，或执行：
 
 ```powershell
 cd android
 .\gradlew.bat assembleRelease
 ```
 
-The current public forum URL is:
+## 配置原则
 
-```text
-https://kezaiforum.xyz
-```
+仓库只保存示例配置和代码，不保存真实密码、隧道凭证、服务器私钥或用户资料。请在你自己的服务器环境中设置域名、证书、Cloudflare Tunnel 凭证、管理员账号和模型服务地址。
 
-The current LAN fallback URL is:
+详细选项见 [SETTINGS.md](./docs/SETTINGS.md)。
 
-```text
-http://10.10.24.116
-```
+## 安全边界
+
+- “实名登记”表示成员填写姓名和办公室并作出承诺，不等于证件或公安身份核验。
+- 匿名只对普通成员隐藏，管理员仍可追溯实名账号。
+- 轻量审核模型是辅助判断，不能替代管理员处理争议和违规内容。
+- 内网使用普通网页连接时，浏览器会提示部分高级安全能力不可用；正式部署应配置内网证书。
+- 公网入口依赖服务器所在网络能够稳定连接外部通道，应准备独立备份和恢复方案。
+
+如发现安全问题，请不要在公开议题中贴出账号、密码、个人资料或服务器凭证。
+
+## 验证记录
+
+项目内保留的验收结果包括：
+
+- 公网与内网双向注册、发帖和回复；
+- 登录状态、头像记忆与成员编号；
+- 首帖审核、明显违规内容拦截；
+- 匿名身份、管理员追溯与私聊；
+- 公聊机器人公网和内网回复；
+- Android 安装包下载与版本一致性。
+
+测试账号和测试内容在验收后清理。当前仓库用于公开展示和复刻参考；未附带开源许可证，二次分发或商业使用前请先取得作者明确授权。

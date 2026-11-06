@@ -175,7 +175,7 @@ module ::InnoxLan
         raise RegistrationError, "用户名须为 3 至 20 位，以英文字母开头，只能包含字母、数字和下划线。"
       end
       if password.length < MIN_PASSWORD_LENGTH || password.length > User.max_password_length
-        raise RegistrationError, "密码须为 12 至 #{User.max_password_length} 位。"
+        raise RegistrationError, "密码须为 #{MIN_PASSWORD_LENGTH} 至 #{User.max_password_length} 位。"
       end
       unless password.match?(/[A-Za-z]/) && password.match?(/\d/)
         raise RegistrationError, "密码必须同时包含英文字母和数字。"

@@ -7,10 +7,23 @@ __pycache__/
 
 # Local QA evidence and temporary artifacts
 evidence/
+previews/
 *.idsig
 *.tar.gz
 cloudflared-linux-arm64.deb
 server/cloudflared-config.yml
+
+# Local secrets and machine-specific files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.codex/
+.claude/
+/科仔论坛问题与优化记录_*.md
 
 # Historical APK copies kept outside source control
 Innoxsz-Forum-v*.apk
